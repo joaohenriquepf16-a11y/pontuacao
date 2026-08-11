@@ -648,7 +648,7 @@ tfoot td.task-col{color:var(--ink)}
   }
 
   function initFirebase(){
-    const cfg = window.FIREBASE_CONFIG || {};
+    const cfg = firebaseConfig;
     if(!cfg.databaseURL || !cfg.apiKey || typeof firebase === "undefined"){
       backend = "local"; setConn("local"); return false;
     }
