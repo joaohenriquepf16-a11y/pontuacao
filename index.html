@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Placar de Turmas — Campeonato de Tarefas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- ===== Firebase (Realtime Database) — SDK compat ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO DO FIREBASE
+   ---------------------------------------------------------------------
+   Cole aqui os dados do SEU projeto:
+   Firebase Console → Configurações do projeto → Seus apps (Web) → SDK.
+   Não esqueça de "databaseURL" (Realtime Database).
+
+   • Se você PREENCHER estes campos, o app funciona em TEMPO REAL:
+     várias pessoas lançam pontos e todos veem as mudanças na hora.
+   • Se DEIXAR EM BRANCO, o app funciona em MODO LOCAL (offline),
+     salvando os dados apenas neste navegador.
+
+   Obs.: esta config NÃO é secreta — pode ficar pública no GitHub.
+   A segurança dos dados é controlada pelas "Regras" do Realtime Database.
+   ===================================================================== */
+window.FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",        // ex.: https://SEU-PROJETO-default-rtdb.firebaseio.com
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+</script>
+
+<style>
+:root{
+  --bg:#0c1017;
+  --bg-2:#121826;
+  --panel:#151c2c;
+  --panel-2:#1b2439;
+  --line:#26314a;
+  --ink:#eaf0ff;
+  --ink-soft:#9fb0d0;
+  --ink-dim:#63769a;
+  --gold:#ffcf4d;
+  --gold-deep:#e0a516;
+  --accent:#3ddc97;
+  --hot:#ff5a7a;
+  --silver:#cfd8ec;
+  --bronze:#e0925a;
+  --shadow:0 20px 50px -20px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Manrope',sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255,207,77,.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(61,220,151,.08), transparent 55%),
+    var(--bg);
+  color:var(--ink);
+  min-height:100vh;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.grain{
+  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;
+}
+
+/* HERO */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero:before{
+  content:"";position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(115deg, transparent 0 38px, rgba(255,255,255,.015) 38px 39px);
+  pointer-events:none;
+}
+.hero-inner{max-width:1100px;margin:0 auto;padding:52px 24px 42px;position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:10px;flex-wrap:wrap;letter-spacing:.32em;font-size:12px;font-weight:800;color:var(--ink-soft)}
+.brand-mark{color:var(--gold)}
+.brand-thin{color:var(--ink-dim);font-weight:600}
+.hero-title{
+  font-family:'Anton',sans-serif;font-weight:400;
+  font-size:clamp(3.2rem,11vw,7rem);line-height:.86;
+  letter-spacing:.01em;margin:18px 0 14px;text-transform:uppercase;
+}
+.hero-title .outline{
+  color:transparent;-webkit-text-stroke:2px var(--gold);
+  text-shadow:0 0 40px rgba(255,207,77,.25);
+}
+.hero-sub{color:var(--ink-soft);max-width:46ch;font-size:1.05rem}
+.hero-stats{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px}
+.stat{
+  background:linear-gradient(160deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line);border-radius:14px;padding:12px 18px;min-width:104px;
+}
+.stat b{font-family:'Space Mono',monospace;font-size:1.7rem;display:block;color:var(--gold)}
+.stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-dim)}
+
+/* LAYOUT */
+.wrap{max-width:1100px;margin:0 auto;padding:34px 24px 80px;position:relative;z-index:1}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+
+.panel{
+  background:linear-gradient(180deg,var(--panel),var(--bg-2));
+  border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:22px;
+  box-shadow:var(--shadow);
+}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.panel-title{font-size:1.15rem;font-weight:800;letter-spacing:.01em;display:flex;align-items:center;gap:10px}
+.panel-title .ico{font-size:1.2rem}
+.panel-note{font-size:.78rem;color:var(--ink-dim);letter-spacing:.03em}
+
+/* FORMS */
+.row-form{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.inp{
+  flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  padding:13px 15px;border-radius:11px;font-size:.95rem;font-family:inherit;transition:.18s;
+}
+.inp::placeholder{color:var(--ink-dim)}
+.inp:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,207,77,.14)}
+.inp-num{flex:0 0 108px;font-family:'Space Mono',monospace}
+.btn{
+  cursor:pointer;border:none;font-family:inherit;font-weight:800;font-size:.9rem;
+  padding:13px 20px;border-radius:11px;transition:.16s;letter-spacing:.02em;
+}
+.btn-add{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#241a00}
+.btn-add:hover{transform:translateY(-2px);box-shadow:0 10px 24px -8px rgba(255,207,77,.5)}
+.btn-add:active{transform:translateY(0)}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
+.btn-ghost:hover{border-color:var(--hot);color:var(--hot)}
+
+/* LISTS */
+.list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.list-item{
+  display:flex;align-items:center;gap:12px;background:var(--bg);
+  border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+  animation:pop .3s ease;
+}
+.list-item .li-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pts-badge{
+  font-family:'Space Mono',monospace;font-weight:700;font-size:.82rem;
+  background:rgba(255,207,77,.12);color:var(--gold);border:1px solid rgba(255,207,77,.3);
+  padding:4px 10px;border-radius:20px;white-space:nowrap;
+}
+.del{
+  cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+  width:30px;height:30px;border-radius:8px;font-size:1rem;line-height:1;transition:.15s;flex:0 0 auto;
+}
+.del:hover{border-color:var(--hot);color:var(--hot);background:rgba(255,90,122,.08)}
+.empty{color:var(--ink-dim);font-size:.9rem;padding:16px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+
+/* RANKING */
+.podium{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:12px;align-items:end;margin-bottom:20px}
+@media(max-width:560px){.podium{grid-template-columns:1fr;gap:10px}}
+.pod{
+  border-radius:14px;padding:16px;text-align:center;border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));position:relative;
+  animation:rise .5s cubic-bezier(.2,.8,.25,1) both;
+}
+.pod .medal{font-size:1.8rem}
+.pod .pod-name{font-weight:800;margin:6px 0 2px;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod .pod-pts{font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700}
+.pod.p1{border-color:var(--gold);box-shadow:0 0 34px -8px rgba(255,207,77,.5);padding-top:26px}
+.pod.p1 .pod-pts{color:var(--gold)}
+.pod.p2{order:-1}.pod.p2 .pod-pts{color:var(--silver)}
+.pod.p3 .pod-pts{color:var(--bronze)}
+@media(max-width:560px){.pod.p2{order:0}}
+.crown{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:1.5rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+
+.rank-list{display:flex;flex-direction:column;gap:8px}
+.rank-row{
+  display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;
+  background:var(--bg);border:1px solid var(--line);transition:.25s;
+}
+.rank-row.leader{border-color:var(--gold);background:linear-gradient(90deg,rgba(255,207,77,.09),var(--bg))}
+.rank-pos{font-family:'Anton',sans-serif;font-size:1.4rem;color:var(--ink-dim);width:38px;text-align:center}
+.rank-row.leader .rank-pos{color:var(--gold)}
+.rank-name{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-bar-wrap{flex:1.4;height:9px;background:var(--panel-2);border-radius:6px;overflow:hidden;min-width:60px}
+.rank-bar{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--gold-deep),var(--gold));transition:width .6s cubic-bezier(.2,.8,.25,1)}
+.rank-row:not(.leader) .rank-bar{background:linear-gradient(90deg,#33507a,#4d76ad)}
+.rank-pts{font-family:'Space Mono',monospace;font-weight:700;font-size:1.05rem;width:66px;text-align:right}
+
+/* MATRIX */
+.matrix-wrap{overflow-x:auto}
+table.matrix{border-collapse:collapse;width:100%;min-width:520px}
+table.matrix th,table.matrix td{padding:11px 12px;text-align:center;border-bottom:1px solid var(--line)}
+table.matrix thead th{
+  font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);
+  position:sticky;top:0;background:var(--panel);font-weight:700;
+}
+table.matrix th.task-col,table.matrix td.task-col{text-align:left;font-weight:700}
+table.matrix td.task-col small{display:block;color:var(--gold);font-family:'Space Mono',monospace;font-weight:400;font-size:.72rem}
+.score-cell{position:relative}
+.score-inp{
+  width:74px;text-align:center;font-family:'Space Mono',monospace;font-weight:700;font-size:.95rem;
+  background:var(--bg);border:2px solid var(--line);color:var(--ink);
+  padding:8px 6px;border-radius:9px;transition:.15s;-moz-appearance:textfield;
+}
+.score-inp::-webkit-outer-spin-button,.score-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.score-inp::placeholder{color:var(--ink-dim);font-weight:400}
+.score-inp:hover{border-color:var(--gold)}
+.score-inp:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,207,77,.16)}
+.score-inp.has-val{border-color:var(--accent);color:var(--accent)}
+.score-inp.full{border-color:var(--gold);color:var(--gold);background:rgba(255,207,77,.08)}
+.score-inp.over{border-color:var(--hot);color:var(--hot);background:rgba(255,90,122,.08)}
+.max-hint{display:block;margin-top:4px;font-size:.62rem;color:var(--ink-dim);letter-spacing:.04em}
+tfoot td{font-family:'Space Mono',monospace;font-weight:700;color:var(--gold);border-top:2px solid var(--line);border-bottom:none;font-size:1rem}
+tfoot td.task-col{color:var(--ink)}
+
+/* CONNECTION STATUS */
+.conn{
+  display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:7px 13px;border-radius:20px;
+  border:1px solid var(--line);background:var(--bg-2);color:var(--ink-soft);
+}
+.conn .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-dim);box-shadow:0 0 0 0 rgba(0,0,0,0)}
+.conn.online .dot{background:var(--accent);animation:pulse 1.8s ease-out infinite}
+.conn.online{color:var(--accent);border-color:rgba(61,220,151,.4)}
+.conn.local .dot{background:var(--gold)}
+.conn.local{color:var(--gold);border-color:rgba(255,207,77,.35)}
+.conn.offline .dot{background:var(--hot)}
+.conn.offline{color:var(--hot);border-color:rgba(255,90,122,.4)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.5)}70%{box-shadow:0 0 0 8px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+
+/* FOOTER */
+.foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:8px}
+.foot-note{color:var(--ink-dim);font-size:.8rem}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(120%);
+  background:var(--panel-2);border:1px solid var(--gold);color:var(--ink);
+  padding:13px 22px;border-radius:12px;font-weight:700;font-size:.9rem;z-index:50;
+  transition:transform .35s cubic-bezier(.2,.9,.3,1);box-shadow:var(--shadow);max-width:90vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-text">CAMPEONATO<span class="brand-thin"> DE TAREFAS</span></span>
+      <span id="conn" class="conn local"><span class="dot"></span><span id="connText">Modo local</span></span>
+    </div>
+    <h1 class="hero-title">PLACAR<br><span class="outline">DE TURMAS</span></h1>
+    <p class="hero-sub">Some pontos, acompanhe a classificação e descubra a turma campeã.</p>
+    <div class="hero-stats" id="heroStats"><!-- stats injected --></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- CLASSIFICAÇÃO -->
+  <section class="panel" id="rankingPanel">
+    <div class="panel-head">
+      <h2 class="panel-title"><span class="ico">🏆</span> Classificação</h2>
+      <span class="panel-note" id="rankNote"></span>
+    </div>
+    <div id="podium" class="podium"><!-- podium injected --></div>
+    <div id="rankList" class="rank-list"><!-- ranking injected --></div>
+  </section>
+
+  <div class="grid-2">
+    <!-- TAREFAS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title"><span class="ico">📋</span> Tarefas</h2>
+      </div>
+      <form id="taskForm" class="row-form" autocomplete="off">
+        <input type="text" id="taskName" class="inp" placeholder="Nome da tarefa" maxlength="60" required />
+        <input type="number" id="taskPoints" class="inp inp-num" placeholder="Pts máx." min="0" step="any" required title="Pontuação máxima da tarefa" />
+        <button type="submit" class="btn btn-add">Adicionar</button>
+      </form>
+      <ul id="taskList" class="list"><!-- tasks injected --></ul>
+    </section>
+
+    <!-- TURMAS -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title"><span class="ico">🎓</span> Turmas</h2>
+      </div>
+      <form id="classForm" class="row-form" autocomplete="off">
+        <input type="text" id="className" class="inp" placeholder="Nome da turma" maxlength="40" required />
+        <button type="submit" class="btn btn-add">Adicionar</button>
+      </form>
+      <ul id="classList" class="list"><!-- classes injected --></ul>
+    </section>
+  </div>
+
+  <!-- MATRIZ DE PONTUAÇÃO -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title"><span class="ico">✅</span> Registro de Pontos</h2>
+      <span class="panel-note">Digite os pontos de cada turma (0 até o máximo da tarefa)</span>
+    </div>
+    <div id="matrixWrap" class="matrix-wrap"><!-- matrix injected --></div>
+  </section>
+
+  <footer class="foot">
+    <button id="resetBtn" class="btn btn-ghost">Zerar tudo</button>
+    <span class="foot-note" id="footNote">Os dados ficam salvos neste navegador.</span>
+  </footer>
+</main>
+
+<!-- toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const STORE_KEY = "placar_turmas_v1";
+  const DATA_PATH = "campeonato/v1";   // caminho compartilhado no Realtime Database
+
+  // ---------- State ----------
+  // scores keyed by "taskId::classId" => número de pontos alcançados (0..máximo da tarefa)
+  let state = { tasks: [], classes: [], scores: {} };
+  let backend = "local";               // "local" ou "firebase"
+  let db = null, rootRef = null, applyingRemote = false;
+
+  // ---------- Helpers ----------
+  const el = id => document.getElementById(id);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const key = (t,c) => t + "::" + c;   // ':' é permitido em chaves do Realtime Database
+  const esc = s => String(s).replace(/[&<>"']/g, m => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]
+  ));
+  const num = v => { const n = Number(v); return isFinite(n) ? n : 0; };
+  const round2 = n => Math.round(n*100)/100;
+  const fmt = n => { n = round2(n); return Number.isInteger(n) ? String(n) : String(n); };
+  const taskById = id => state.tasks.find(t => t.id === id);
+
+  // ---------- Persistence (local) ----------
+  function saveLocal(){
+    if(backend !== "local") return;
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn("Falha ao salvar:", e); }
+  }
+  function loadLocal(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(!raw) return;
+      const p = JSON.parse(raw);
+      state.tasks   = Array.isArray(p.tasks)   ? p.tasks   : [];
+      state.classes = Array.isArray(p.classes) ? p.classes : [];
+      state.scores  = (p.scores && typeof p.scores === "object") ? p.scores : {};
+      // Migração: versão antiga guardava "true" (concluído). Converte para o máximo da tarefa.
+      for(const k of Object.keys(state.scores)){
+        if(state.scores[k] === true){
+          const t = taskById(k.split("::")[0]);
+          state.scores[k] = t ? num(t.points) : 0;
+        } else {
+          state.scores[k] = num(state.scores[k]);
+        }
+        if(!state.scores[k]) delete state.scores[k];
+      }
+    }catch(e){ console.warn("Falha ao carregar:", e); }
+  }
+
+  // ---------- Computation ----------
+  function classTotal(classId){
+    let sum = 0;
+    for(const t of state.tasks){
+      const v = num(state.scores[key(t.id, classId)]);
+      sum += Math.min(Math.max(v, 0), num(t.points));
+    }
+    return round2(sum);
+  }
+  function ranking(){
+    return state.classes
+      .map(c => ({ ...c, total: classTotal(c.id) }))
+      .sort((a,b) => b.total - a.total || a.name.localeCompare(b.name,"pt"));
+  }
+
+  // ---------- DOM refs ----------
+  const taskList = el("taskList"), classList = el("classList");
+  const matrixWrap = el("matrixWrap"), podium = el("podium");
+  const rankList = el("rankList"), rankNote = el("rankNote");
+  const heroStats = el("heroStats");
+  let lastSig = "";
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg){
+    const t = el("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> t.classList.remove("show"), 2400);
+  }
+
+  // ---------- Connection badge ----------
+  function setConn(mode){
+    const c = el("conn"), txt = el("connText"), foot = el("footNote");
+    c.className = "conn " + mode;
+    if(mode === "online"){ txt.textContent = "Tempo real • conectado"; foot.textContent = "Sincronizado em tempo real via Firebase — várias pessoas podem lançar pontos ao mesmo tempo."; }
+    else if(mode === "offline"){ txt.textContent = "Reconectando…"; foot.textContent = "Sem conexão com o Firebase. Tentando reconectar…"; }
+    else { txt.textContent = "Modo local"; foot.textContent = "Modo local: os dados ficam salvos apenas neste navegador. Preencha a configuração do Firebase para sincronizar em tempo real."; }
+  }
+
+  // ---------- Renderers ----------
+  function renderTasks(){
+    if(!state.tasks.length){
+      taskList.innerHTML = '<li class="empty">Nenhuma tarefa ainda. Adicione a primeira!</li>';
+      return;
+    }
+    taskList.innerHTML = state.tasks.map(t => `
+      <li class="list-item" data-id="${t.id}">
+        <span class="li-name">${esc(t.name)}</span>
+        <span class="pts-badge">máx ${fmt(t.points)} pts</span>
+        <button class="del" data-del-task="${t.id}" title="Excluir tarefa" aria-label="Excluir tarefa">×</button>
+      </li>`).join("");
+  }
+  function renderClasses(){
+    if(!state.classes.length){
+      classList.innerHTML = '<li class="empty">Nenhuma turma ainda. Adicione a primeira!</li>';
+      return;
+    }
+    classList.innerHTML = state.classes.map(c => `
+      <li class="list-item" data-id="${c.id}">
+        <span class="li-name">${esc(c.name)}</span>
+        <span class="pts-badge">${fmt(classTotal(c.id))} pts</span>
+        <button class="del" data-del-class="${c.id}" title="Excluir turma" aria-label="Excluir turma">×</button>
+      </li>`).join("");
+  }
+  function styleScoreInput(inp){
+    const t = taskById(inp.dataset.task);
+    const max = t ? num(t.points) : 0;
+    const raw = inp.value.trim().replace(",", ".");
+    inp.classList.remove("has-val","full","over");
+    if(raw === "") return;
+    const v = parseFloat(raw);
+    if(isNaN(v)) return;
+    if(v > max) inp.classList.add("over");
+    else if(v === max && max > 0) inp.classList.add("full");
+    else if(v > 0) inp.classList.add("has-val");
+  }
+  function renderMatrix(){
+    if(!state.tasks.length || !state.classes.length){
+      matrixWrap.innerHTML = '<p class="empty">Adicione pelo menos uma tarefa e uma turma para registrar pontos.</p>';
+      return;
+    }
+    const head = `<tr><th class="task-col">Tarefa</th>${
+      state.classes.map(c => `<th>${esc(c.name)}</th>`).join("")
+    }</tr>`;
+    const body = state.tasks.map(t => `
+      <tr>
+        <td class="task-col">${esc(t.name)}<small>máx ${fmt(t.points)} pts</small></td>
+        ${state.classes.map(c => {
+          const v = state.scores[key(t.id,c.id)];
+          const val = (v === undefined || v === null) ? "" : fmt(v);
+          return `<td class="score-cell">
+            <input type="number" class="score-inp" inputmode="decimal"
+              data-task="${t.id}" data-class="${c.id}"
+              min="0" max="${num(t.points)}" step="any" placeholder="0"
+              value="${val}"
+              aria-label="Pontos de ${esc(c.name)} em ${esc(t.name)} (máximo ${fmt(t.points)})">
+          </td>`;
+        }).join("")}
+      </tr>`).join("");
+    const foot = `<tr><td class="task-col">Total</td>${
+      state.classes.map(c => `<td data-total="${c.id}">${fmt(classTotal(c.id))}</td>`).join("")
+    }</tr>`;
+    matrixWrap.innerHTML =
+      `<table class="matrix"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`;
+    matrixWrap.querySelectorAll(".score-inp").forEach(styleScoreInput);
+  }
+  function patchScores(){
+    matrixWrap.querySelectorAll(".score-inp").forEach(inp => {
+      if(document.activeElement === inp){ styleScoreInput(inp); return; } // não sobrescreve o campo em uso
+      const v = state.scores[key(inp.dataset.task, inp.dataset.class)];
+      inp.value = (v === undefined || v === null) ? "" : fmt(v);
+      styleScoreInput(inp);
+    });
+    updateTotalsRow();
+  }
+  function updateTotalsRow(){
+    state.classes.forEach(c => {
+      const td = matrixWrap.querySelector('tfoot td[data-total="'+c.id+'"]');
+      if(td) td.textContent = fmt(classTotal(c.id));
+    });
+  }
+  function renderRanking(){
+    const r = ranking();
+    if(!r.length){
+      podium.innerHTML = "";
+      rankList.innerHTML = '<p class="empty">Adicione turmas para ver a classificação.</p>';
+      rankNote.textContent = "";
+      return;
+    }
+    const maxPts = Math.max(1, r[0].total);
+    const hasPoints = r[0].total > 0;
+    const tiedTop = r.filter(x => x.total === r[0].total).length > 1;
+    rankNote.textContent = hasPoints
+      ? (tiedTop ? "Empate na liderança!" : "Líder: " + r[0].name)
+      : "Aguardando pontuações";
+
+    const medals = ["🥇","🥈","🥉"];
+    podium.innerHTML = r.slice(0,3).map((c,i) => `
+      <div class="pod p${i+1}" style="animation-delay:${i*0.08}s">
+        ${i===0 && hasPoints ? '<span class="crown">👑</span>' : ""}
+        <div class="medal">${medals[i]}</div>
+        <div class="pod-name">${esc(c.name)}</div>
+        <div class="pod-pts">${fmt(c.total)}</div>
+      </div>`).join("");
+
+    rankList.innerHTML = r.map((c,i) => `
+      <div class="rank-row ${i===0 && hasPoints ? "leader":""}">
+        <span class="rank-pos">${i+1}º</span>
+        <span class="rank-name">${esc(c.name)}</span>
+        <span class="rank-bar-wrap"><span class="rank-bar" style="width:${(c.total/maxPts*100)}%"></span></span>
+        <span class="rank-pts">${fmt(c.total)}</span>
+      </div>`).join("");
+  }
+  function renderStats(){
+    const totalPts = state.classes.reduce((s,c)=> s + classTotal(c.id), 0);
+    heroStats.innerHTML = `
+      <div class="stat"><b>${state.classes.length}</b><span>Turmas</span></div>
+      <div class="stat"><b>${state.tasks.length}</b><span>Tarefas</span></div>
+      <div class="stat"><b>${fmt(totalPts)}</b><span>Pontos dados</span></div>`;
+  }
+  function structureSig(){
+    return state.tasks.map(t=>t.id+":"+t.points+":"+t.name).join("|") + "##" +
+           state.classes.map(c=>c.id+":"+c.name).join("|");
+  }
+  function render(){
+    renderTasks(); renderClasses(); renderRanking(); renderStats();
+    const sig = structureSig();
+    if(sig !== lastSig){
+      // estrutura mudou → reconstrói a matriz preservando o campo em edição, se possível
+      const active = captureActive();
+      renderMatrix();
+      lastSig = sig;
+      restoreActive(active);
+    } else {
+      patchScores();
+    }
+  }
+  function captureActive(){
+    const a = document.activeElement;
+    if(a && a.classList && a.classList.contains("score-inp")){
+      return { task:a.dataset.task, cls:a.dataset.class, value:a.value, sel:a.selectionStart };
+    }
+    return null;
+  }
+  function restoreActive(a){
+    if(!a) return;
+    const inp = matrixWrap.querySelector('.score-inp[data-task="'+a.task+'"][data-class="'+a.cls+'"]');
+    if(inp){ inp.value = a.value; try{ inp.focus(); inp.setSelectionRange(a.sel,a.sel); }catch(_){} styleScoreInput(inp); }
+  }
+
+  // =====================================================================
+  //  DATA LAYER — grava no localStorage OU no Firebase, conforme o backend
+  // =====================================================================
+  function addTask(name, points){
+    const id = uid(), createdAt = Date.now();
+    if(backend === "firebase"){
+      rootRef.child("tasks/"+id).set({ name, points, createdAt });
+    } else {
+      state.tasks.push({ id, name, points, createdAt });
+      saveLocal(); render();
+    }
+  }
+  function addClass(name){
+    const id = uid(), createdAt = Date.now();
+    if(backend === "firebase"){
+      rootRef.child("classes/"+id).set({ name, createdAt });
+    } else {
+      state.classes.push({ id, name, createdAt });
+      saveLocal(); render();
+    }
+  }
+  function delTask(id){
+    if(backend === "firebase"){
+      const updates = { ["tasks/"+id]: null };
+      for(const k of Object.keys(state.scores)) if(k.startsWith(id+"::")) updates["scores/"+k] = null;
+      rootRef.update(updates);
+    } else {
+      state.tasks = state.tasks.filter(t=>t.id!==id);
+      for(const k of Object.keys(state.scores)) if(k.startsWith(id+"::")) delete state.scores[k];
+      saveLocal(); render();
+    }
+  }
+  function delClass(id){
+    if(backend === "firebase"){
+      const updates = { ["classes/"+id]: null };
+      for(const k of Object.keys(state.scores)) if(k.endsWith("::"+id)) updates["scores/"+k] = null;
+      rootRef.update(updates);
+    } else {
+      state.classes = state.classes.filter(c=>c.id!==id);
+      for(const k of Object.keys(state.scores)) if(k.endsWith("::"+id)) delete state.scores[k];
+      saveLocal(); render();
+    }
+  }
+  function resetAll(){
+    if(backend === "firebase"){
+      rootRef.set(null);
+    } else {
+      state = { tasks: [], classes: [], scores: {} };
+      saveLocal(); render();
+    }
+  }
+  // grava um placar (com debounce por célula)
+  const scoreTimers = {};
+  function writeScore(k){
+    const v = state.scores[k];
+    if(backend === "firebase"){
+      const ref = rootRef.child("scores/"+k);
+      if(v === undefined) ref.remove(); else ref.set(v);
+    } else {
+      saveLocal();
+    }
+  }
+  function scheduleScore(k){ clearTimeout(scoreTimers[k]); scoreTimers[k] = setTimeout(()=>writeScore(k), 350); }
+
+  // ---------- Firebase snapshot → estado local ----------
+  function applyRemote(val){
+    applyingRemote = true;
+    val = val || {};
+    const tObj = val.tasks || {}, cObj = val.classes || {}, sObj = val.scores || {};
+    state.tasks = Object.keys(tObj).map(id => ({
+      id, name: tObj[id].name || "", points: num(tObj[id].points), createdAt: num(tObj[id].createdAt)
+    })).sort((a,b)=> a.createdAt - b.createdAt || a.name.localeCompare(b.name,"pt"));
+    state.classes = Object.keys(cObj).map(id => ({
+      id, name: cObj[id].name || "", createdAt: num(cObj[id].createdAt)
+    })).sort((a,b)=> a.createdAt - b.createdAt || a.name.localeCompare(b.name,"pt"));
+    state.scores = {};
+    for(const k of Object.keys(sObj)){ const n = num(sObj[k]); if(n) state.scores[k] = n; }
+    render();
+    applyingRemote = false;
+  }
+
+  function initFirebase(){
+    const cfg = window.FIREBASE_CONFIG || {};
+    if(!cfg.databaseURL || !cfg.apiKey || typeof firebase === "undefined"){
+      backend = "local"; setConn("local"); return false;
+    }
+    try{
+      firebase.initializeApp(cfg);
+      db = firebase.database();
+      rootRef = db.ref(DATA_PATH);
+      backend = "firebase";
+      db.ref(".info/connected").on("value", s => setConn(s.val() === true ? "online" : "offline"));
+      rootRef.on("value",
+        snap => applyRemote(snap.val()),
+        err => { console.warn("Firebase:", err); toast("Erro Firebase: " + (err.code||err.message)); });
+      return true;
+    }catch(e){
+      console.warn("Firebase falhou, usando modo local:", e);
+      backend = "local"; setConn("local"); return false;
+    }
+  }
+
+  // =====================================================================
+  //  EVENTS
+  // =====================================================================
+  el("taskForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = el("taskName").value.trim();
+    const points = parseFloat(el("taskPoints").value.replace(",", "."));
+    if(!name || isNaN(points) || points < 0){ toast("Informe nome e pontuação máxima válida."); return; }
+    addTask(name, round2(points));
+    el("taskForm").reset(); el("taskName").focus();
+    toast(`Tarefa "${name}" adicionada (máx ${fmt(points)} pts).`);
+  });
+
+  el("classForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = el("className").value.trim();
+    if(!name) return;
+    if(state.classes.some(c => c.name.toLowerCase() === name.toLowerCase())){ toast("Essa turma já existe."); return; }
+    addClass(name);
+    el("classForm").reset(); el("className").focus();
+    toast(`Turma "${name}" adicionada.`);
+  });
+
+  // Delete (delegação)
+  document.body.addEventListener("click", e => {
+    const dt = e.target.closest("[data-del-task]");
+    const dc = e.target.closest("[data-del-class]");
+    if(dt){
+      const id = dt.getAttribute("data-del-task");
+      const task = taskById(id);
+      if(task && confirm(`Excluir a tarefa "${task.name}"? Os pontos ligados a ela serão removidos.`)){
+        delTask(id); toast("Tarefa excluída.");
+      }
+    } else if(dc){
+      const id = dc.getAttribute("data-del-class");
+      const cls = state.classes.find(c=>c.id===id);
+      if(cls && confirm(`Excluir a turma "${cls.name}"? A pontuação dela será removida.`)){
+        delClass(id); toast("Turma excluída.");
+      }
+    }
+  });
+
+  // Lançamento de pontos (delegação nos inputs numéricos)
+  matrixWrap.addEventListener("input", e => {
+    const inp = e.target.closest(".score-inp");
+    if(!inp) return;
+    const k = key(inp.dataset.task, inp.dataset.class);
+    const raw = inp.value.trim().replace(",", ".");
+    let v = raw === "" ? NaN : parseFloat(raw);
+    if(raw === "" || isNaN(v) || v <= 0) delete state.scores[k];
+    else state.scores[k] = round2(Math.max(0, v));
+    styleScoreInput(inp);
+    renderClasses(); renderRanking(); renderStats(); updateTotalsRow();
+    scheduleScore(k);
+  });
+  // Ao sair do campo: valida e limita ao máximo da tarefa
+  matrixWrap.addEventListener("change", e => {
+    const inp = e.target.closest(".score-inp");
+    if(!inp) return;
+    const k = key(inp.dataset.task, inp.dataset.class);
+    const t = taskById(inp.dataset.task);
+    const max = t ? num(t.points) : 0;
+    const raw = inp.value.trim().replace(",", ".");
+    let v = raw === "" ? NaN : parseFloat(raw);
+    if(!isNaN(v) && v > max){ v = max; inp.value = fmt(max); toast(`Máximo desta tarefa: ${fmt(max)} pts.`); }
+    if(isNaN(v) || v <= 0){ delete state.scores[k]; inp.value = ""; }
+    else state.scores[k] = round2(Math.max(0, v));
+    styleScoreInput(inp);
+    renderClasses(); renderRanking(); renderStats(); updateTotalsRow();
+    clearTimeout(scoreTimers[k]); writeScore(k);
+  });
+
+  el("resetBtn").addEventListener("click", () => {
+    if(confirm("Isso vai apagar TODAS as turmas, tarefas e pontuações"
+      + (backend === "firebase" ? " PARA TODOS (Firebase)" : "") + ". Continuar?")){
+      resetAll(); toast("Tudo zerado.");
+    }
+  });
+
+  // =====================================================================
+  //  INIT
+  // =====================================================================
+  if(!initFirebase()){
+    loadLocal();
+    render();
+  }
+})();
+</script>
+</body>
+</html>
