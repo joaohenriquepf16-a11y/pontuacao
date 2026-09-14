@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TABUANDO - Competição de Tabuada</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <!-- jsPDF + AutoTable para exportação de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --primary-light: #e0e7ff;
+      --accent: #f59e0b;
+      --accent-dark: #d97706;
+      --success: #10b981;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+      color: white;
+      padding: 28px 20px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    header .container { max-width: 1100px; margin: 0 auto; }
+    header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    header p { margin-top: 6px; font-size: 14px; opacity: 0.85; }
+
+    /* LAYOUT */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon { font-size: 22px; }
+
+    /* FORMS */
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .form-group { flex: 1; min-width: 180px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+    input[type="number"] { max-width: 120px; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-outline { background: white; color: var(--text); border: 2px solid var(--border); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* DROPDOWNS SECTION */
+    .nav-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+    }
+    .nav-section .form-group { min-width: 200px; }
+
+    /* TAREFA CARD */
+    .tarefa-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: border-color 0.15s;
+    }
+    .tarefa-card:hover { border-color: var(--primary-light); }
+    .tarefa-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .tarefa-name { font-size: 17px; font-weight: 700; }
+    .tarefa-max {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .tarefa-actions { display: flex; gap: 8px; }
+
+    /* SCORE BAR */
+    .score-bar-container {
+      background: var(--border);
+      border-radius: 10px;
+      height: 10px;
+      overflow: hidden;
+      margin: 10px 0 6px;
+    }
+    .score-bar {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+    .score-bar.ok { background: var(--success); }
+    .score-bar.full { background: var(--accent); }
+    .score-bar.over { background: var(--danger); }
+    .score-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .score-info .over-warn { color: var(--danger); }
+
+    /* PARTICIPANTES TABLE */
+    .participantes-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .participantes-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--bg);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border);
+    }
+    .participantes-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .participantes-table tr:last-child td { border-bottom: none; }
+    .participantes-table input {
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+    .participantes-table .score-input { width: 90px; }
+    .participantes-table .name-input { min-width: 150px; }
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .rank-1 { background: #fef3c7; color: #92400e; }
+    .rank-2 { background: #e2e8f0; color: #475569; }
+    .rank-3 { background: #fed7aa; color: #9a3412; }
+    .rank-other { background: var(--bg); color: var(--text-muted); }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 15px; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white;
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .modal h3 { font-size: 20px; font-weight: 700; margin-bottom: 18px; }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 22px;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+      max-width: 90%;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.error { background: var(--danger); }
+    .toast.success { background: var(--success); }
+
+    /* CONFIG BANNER */
+    .config-banner {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .config-banner strong { color: #92400e; }
+
+    /* LOADING */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      header h1 { font-size: 22px; }
+      .card { padding: 18px; }
+      .form-row { flex-direction: column; }
+      .form-group { min-width: 100%; }
+      .tarefa-header { flex-direction: column; }
+      .participantes-table { font-size: 13px; }
+      .participantes-table th, .participantes-table td { padding: 6px 8px; }
+    }
+
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .text-muted { color: var(--text-muted); font-size: 13px; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .mt-2 { margin-top: 8px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🧮 TABUANDO <span class="badge">Competição Escolar</span></h1>
+    <p>Gerencie turmas, tarefas e pontuações da competição de tabuada</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- AVISO DE CONFIGURAÇÃO -->
+  <div id="configBanner" class="config-banner hidden">
+    <strong>⚠️ Configure o Firebase:</strong> Edite as constantes <code>firebaseConfig</code> no início do script
+    com as credenciais do seu projeto Firebase Realtime Database.
+  </div>
+
+  <!-- NAVEGAÇÃO: SÉRIE + TURMA -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🗂️</span> Navegação</div>
+    <div class="nav-section">
+      <div class="form-group">
+        <label>Série</label>
+        <select id="selectSerie" onchange="onSerieChange()">
+          <option value="">— Selecione a série —</option>
+          <option value="4ano">4° Ano</option>
+          <option value="5ano">5° Ano</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Turma</label>
+        <select id="selectTurma" onchange="onTurmaChange()" disabled>
+          <option value="">— Selecione a turma —</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0;">
+        <button class="btn btn-primary" onclick="openTurmaModal()">＋ Nova Turma</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÁREA PRINCIPAL -->
+  <div id="mainContent">
+    <div class="empty-state">
+      <div class="icon">🧮</div>
+      <p>Selecione uma série e uma turma para começar</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: NOVA/EDITAR TURMA -->
+<div class="modal-overlay" id="turmaModal">
+  <div class="modal">
+    <h3 id="turmaModalTitle">Nova Turma</h3>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Série</label>
+      <select id="turmaSerie">
+        <option value="4ano">4° Ano</option>
+        <option value="5ano">5° Ano</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Nome da Turma</label>
+      <input type="text" id="turmaNome" placeholder="Ex: Turma A, Turma 401..." />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTurmaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTurma()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVA/EDITAR TAREFA -->
+<div class="modal-overlay" id="tarefaModal">
+  <div class="modal">
+    <h3 id="tarefaModalTitle">Nova Tarefa</h3>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Nome da Tarefa</label>
+      <input type="text" id="tarefaNome" placeholder="Ex: Tabuada do 2, Desafio Multiplicação..." />
+    </div>
+    <div class="form-group">
+      <label>Pontuação Máxima</label>
+      <input type="number" id="tarefaMax" placeholder="Ex: 40" min="1" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTarefaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTarefa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO DO FIREBASE
+   Substitua pelos dados do seu projeto Firebase Console
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "COLE_AQUI_SUA_API_KEY",
+  databaseURL: "https://SEU_PROJETO.firebaseio.com",
+  projectId: "SEU_PROJETO",
+  appId: "1:1234567890:web:abcdef123456",
+};
+
+// Inicializa Firebase
+let db = null;
+let firebaseReady = false;
+
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "COLE_AQUI_SUA_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    firebaseReady = true;
+  } else {
+    document.getElementById('configBanner').classList.remove('hidden');
+  }
+} catch (e) {
+  document.getElementById('configBanner').classList.remove('hidden');
+  console.error("Erro Firebase:", e);
+}
+
+/* ============================================================
+   ESTADO DA APLICAÇÃO
+   ============================================================ */
+let state = {
+  turmas: [],        // todas as turmas
+  turmaAtual: null,  // id da turma selecionada
+  serieAtual: '',    // série selecionada
+  editTurmaId: null,
+  editTarefaId: null,
+};
+
+/* ============================================================
+   UTILITÁRIOS
+   ============================================================ */
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+/* ============================================================
+   CRUD TURMAS
+   ============================================================ */
+async function loadTurmas() {
+  if (!firebaseReady) { renderMain(); return; }
+  try {
+    const snap = await db.ref('tabuando/turmas').once('value');
+    const data = snap.val() || {};
+    state.turmas = Object.entries(data).map(([id, v]) => ({ id, ...v }));
+  } catch (e) {
+    console.error(e);
+    state.turmas = [];
+  }
+  renderTurmaOptions();
+  renderMain();
+}
+
+function renderTurmaOptions() {
+  const select = document.getElementById('selectTurma');
+  const serie = document.getElementById('selectSerie').value;
+  const filtered = serie ? state.turmas.filter(t => t.serie === serie) : state.turmas;
+
+  select.innerHTML = '<option value="">— Selecione a turma —</option>' +
+    filtered.map(t => `<option value="${t.id}" ${t.id === state.turmaAtual ? 'selected' : ''}>${escapeHtml(t.nome)}</option>`).join('');
+  select.disabled = filtered.length === 0;
+}
+
+function onSerieChange() {
+  state.serieAtual = document.getElementById('selectSerie').value;
+  state.turmaAtual = null;
+  renderTurmaOptions();
+  renderMain();
+}
+
+function onTurmaChange() {
+  state.turmaAtual = document.getElementById('selectTurma').value;
+  renderMain();
+}
+
+/* ============================================================
+   MODAL TURMA
+   ============================================================ */
+function openTurmaModal(id = null) {
+  state.editTurmaId = id;
+  const modal = document.getElementById('turmaModal');
+  if (id) {
+    const t = state.turmas.find(x => x.id === id);
+    document.getElementById('turmaModalTitle').textContent = 'Editar Turma';
+    document.getElementById('turmaSerie').value = t.serie;
+    document.getElementById('turmaNome').value = t.nome;
+  } else {
+    document.getElementById('turmaModalTitle').textContent = 'Nova Turma';
+    document.getElementById('turmaSerie').value = state.serieAtual || '4ano';
+    document.getElementById('turmaNome').value = '';
+  }
+  modal.classList.add('active');
+  setTimeout(() => document.getElementById('turmaNome').focus(), 100);
+}
+
+function closeTurmaModal() {
+  document.getElementById('turmaModal').classList.remove('active');
+  state.editTurmaId = null;
+}
+
+async function saveTurma() {
+  const serie = document.getElementById('turmaSerie').value;
+  const nome = document.getElementById('turmaNome').value.trim();
+  if (!nome) { showToast('Digite o nome da turma', 'error'); return; }
+  if (!firebaseReady) { showToast('Firebase não configurado', 'error'); return; }
+
+  try {
+    if (state.editTurmaId) {
+      await db.ref(`tabuando/turmas/${state.editTurmaId}`).update({ serie, nome });
+      showToast('Turma atualizada!', 'success');
+    } else {
+      const id = uid();
+      await db.ref(`tabuando/turmas/${id}`).set({ serie, nome, tarefas: {} });
+      showToast('Turma criada!', 'success');
+    }
+    closeTurmaModal();
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+async function deleteTurma(id) {
+  const t = state.turmas.find(x => x.id === id);
+  if (!confirm(`Excluir a turma "${t.nome}" e todas as suas tarefas?`)) return;
+  try {
+    await db.ref(`tabuando/turmas/${id}`).remove();
+    if (state.turmaAtual === id) state.turmaAtual = null;
+    showToast('Turma excluída', 'success');
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   CRUD TAREFAS
+   ============================================================ */
+function openTarefaModal(id = null) {
+  state.editTarefaId = id;
+  const modal = document.getElementById('tarefaModal');
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  if (id) {
+    const tarefa = turma.tarefas[id];
+    document.getElementById('tarefaModalTitle').textContent = 'Editar Tarefa';
+    document.getElementById('tarefaNome').value = tarefa.nome || '';
+    document.getElementById('tarefaMax').value = tarefa.pontuacao_maxima || '';
+  } else {
+    document.getElementById('tarefaModalTitle').textContent = 'Nova Tarefa';
+    document.getElementById('tarefaNome').value = '';
+    document.getElementById('tarefaMax').value = '';
+  }
+  modal.classList.add('active');
+  setTimeout(() => document.getElementById('tarefaNome').focus(), 100);
+}
+
+function closeTarefaModal() {
+  document.getElementById('tarefaModal').classList.remove('active');
+  state.editTarefaId = null;
+}
+
+async function saveTarefa() {
+  const nome = document.getElementById('tarefaNome').value.trim();
+  const max = parseInt(document.getElementById('tarefaMax').value);
+  if (!nome) { showToast('Digite o nome da tarefa', 'error'); return; }
+  if (!max || max < 1) { showToast('Digite uma pontuação máxima válida', 'error'); return; }
+  if (!firebaseReady) { showToast('Firebase não configurado', 'error'); return; }
+
+  try {
+    if (state.editTarefaId) {
+      await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${state.editTarefaId}`).update({
+        nome, pontuacao_maxima: max
+      });
+      showToast('Tarefa atualizada!', 'success');
+    } else {
+      const id = uid();
+      await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${id}`).set({
+        nome, pontuacao_maxima: max, participantes: {}
+      });
+      showToast('Tarefa criada!', 'success');
+    }
+    closeTarefaModal();
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function deleteTarefa(id) {
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  const tarefa = turma.tarefas[id];
+  if (!confirm(`Excluir a tarefa "${tarefa.nome}"?`)) return;
+  try {
+    await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${id}`).remove();
+    showToast('Tarefa excluída', 'success');
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   CRUD PARTICIPANTES
+   ============================================================ */
+async function addParticipante(tarefaId) {
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  const tarefa = turma.tarefas[tarefaId];
+  const nomeInput = document.getElementById(`newPartName_${tarefaId}`);
+  const scoreInput = document.getElementById(`newPartScore_${tarefaId}`);
+  const nome = nomeInput.value.trim();
+  const score = parseInt(scoreInput.value) || 0;
+
+  if (!nome) { showToast('Digite o nome do participante', 'error'); return; }
+  if (score < 0) { showToast('Pontuação não pode ser negativa', 'error'); return; }
+
+  // Validação: soma das pontuações não pode ultrapassar o máximo
+  const participantes = tarefa.participantes || {};
+  const somaAtual = Object.values(participantes).reduce((s, p) => s + (p.pontuacao || 0), 0);
+  if (somaAtual + score > tarefa.pontuacao_maxima) {
+    const restante = tarefa.pontuacao_maxima - somaAtual;
+    showToast(`Pontuação excede o limite! Restam apenas ${restante} pontos.`, 'error');
+    return;
+  }
+
+  try {
+    const id = uid();
+    await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${tarefaId}/participantes/${id}`).set({
+      nome, pontuacao: score
+    });
+    nomeInput.value = '';
+    scoreInput.value = '';
+    showToast('Participante adicionado!', 'success');
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function updateParticipante(tarefaId, partId, field, value) {
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  const tarefa = turma.tarefas[tarefaId];
+  const participantes = tarefa.participantes || {};
+
+  if (field === 'pontuacao') {
+    let score = parseInt(value) || 0;
+    if (score < 0) score = 0;
+    // Validação de limite
+    const somaOutros = Object.entries(participantes)
+      .filter(([id]) => id !== partId)
+      .reduce((s, [, p]) => s + (p.pontuacao || 0), 0);
+    if (somaOutros + score > tarefa.pontuacao_maxima) {
+      const restante = tarefa.pontuacao_maxima - somaOutros;
+      showToast(`Pontuação excede o limite! Máximo para este participante: ${restante}`, 'error');
+      await loadTurmas();
+      return;
+    }
+    try {
+      await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${tarefaId}/participantes/${partId}`).update({ pontuacao: score });
+      await loadTurmas();
+    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+  } else if (field === 'nome') {
+    const nome = value.trim();
+    if (!nome) return;
+    try {
+      await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${tarefaId}/participantes/${partId}`).update({ nome });
+      await loadTurmas();
+    } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+  }
+}
+
+async function deleteParticipante(tarefaId, partId) {
+  if (!confirm('Excluir este participante?')) return;
+  try {
+    await db.ref(`tabuando/turmas/${state.turmaAtual}/tarefas/${tarefaId}/participantes/${partId}`).remove();
+    showToast('Participante removido', 'success');
+    await loadTurmas();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   RENDERIZAÇÃO PRINCIPAL
+   ============================================================ */
+function renderMain() {
+  const container = document.getElementById('mainContent');
+
+  if (!state.turmaAtual) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🧮</div>
+        <p>${state.serieAtual ? 'Selecione uma turma ou crie uma nova' : 'Selecione uma série para ver as turmas'}</p>
+      </div>`;
+    return;
+  }
+
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  if (!turma) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">❓</div><p>Turma não encontrada</p></div>`;
+    return;
+  }
+
+  const serieLabel = turma.serie === '4ano' ? '4° Ano' : '5° Ano';
+  const tarefas = turma.tarefas || {};
+  const tarefaIds = Object.keys(tarefas);
+
+  let html = `
+    <div class="card">
+      <div class="flex-between">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">
+            <span class="icon">🏫</span> ${escapeHtml(turma.nome)} <span class="text-muted" style="font-weight:400;font-size:14px;">— ${serieLabel}</span>
+          </div>
+          <p class="text-muted">${tarefaIds.length} tarefa(s) cadastrada(s)</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-accent btn-sm" onclick="exportTurmaPDF()">📄 PDF da Turma</button>
+          <button class="btn btn-outline btn-sm" onclick="openTurmaModal('${turma.id}')">✏️ Editar Turma</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTurma('${turma.id}')">🗑️ Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <div class="card-title" style="margin-bottom:0;"><span class="icon">📋</span> Tarefas</div>
+        <button class="btn btn-primary" onclick="openTarefaModal()">＋ Nova Tarefa</button>
+      </div>
+    </div>
+  `;
+
+  if (tarefaIds.length === 0) {
+    html += `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon">📝</div>
+          <p>Nenhuma tarefa cadastrada.<br>Clique em "Nova Tarefa" para começar.</p>
+        </div>
+      </div>`;
+  } else {
+    tarefaIds.forEach(tarefaId => {
+      html += renderTarefaCard(tarefaId, tarefas[tarefaId]);
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function renderTarefaCard(tarefaId, tarefa) {
+  const participantes = tarefa.participantes || {};
+  const partEntries = Object.entries(participantes)
+    .map(([id, p]) => ({ id, ...p }))
+    .sort((a, b) => (b.pontuacao || 0) - (a.pontuacao || 0));
+
+  const soma = partEntries.reduce((s, p) => s + (p.pontuacao || 0), 0);
+  const max = tarefa.pontuacao_maxima || 0;
+  const pct = max > 0 ? Math.min((soma / max) * 100, 100) : 0;
+  const restante = max - soma;
+  const overLimit = soma > max;
+  const barClass = overLimit ? 'over' : (soma === max ? 'full' : 'ok');
+
+  let html = `
+    <div class="tarefa-card">
+      <div class="tarefa-header">
+        <div>
+          <div class="tarefa-name">${escapeHtml(tarefa.nome)}</div>
+          <div class="tarefa-max mt-2">🏆 Máximo: ${max} pontos</div>
+        </div>
+        <div class="tarefa-actions">
+          <button class="btn btn-accent btn-sm" onclick="exportTarefaPDF('${tarefaId}')">📄 PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="openTarefaModal('${tarefaId}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTarefa('${tarefaId}')">🗑️</button>
+        </div>
+      </div>
+
+      <div class="score-bar-container">
+        <div class="score-bar ${barClass}" style="width:${pct}%"></div>
+      </div>
+      <div class="score-info">
+        <span>Usado: <strong>${soma}</strong> / ${max} pontos</span>
+        <span class="${restante < 0 ? 'over-warn' : ''}">
+          ${restante > 0 ? `Restam ${restante} pontos` : restante === 0 ? 'Limite atingido' : `Excedeu ${Math.abs(restante)} pontos!`}
+        </span>
+      </div>
+
+      <div class="divider"></div>
+  `;
+
+  if (partEntries.length === 0) {
+    html += `<div class="empty-state" style="padding:20px;"><p>Nenhum participante. Adicione abaixo 👇</p></div>`;
+  } else {
+    html += `
+      <table class="participantes-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Participante</th>
+            <th style="width:110px;">Pontuação</th>
+            <th style="width:80px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    partEntries.forEach((p, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      html += `
+        <tr>
+          <td><span class="rank-badge ${rankClass}">${medal}</span></td>
+          <td><input type="text" class="name-input" value="${escapeHtml(p.nome)}"
+              onchange="updateParticipante('${tarefaId}','${p.id}','nome',this.value)"></td>
+          <td><input type="number" class="score-input" value="${p.pontuacao || 0}" min="0"
+              onchange="updateParticipante('${tarefaId}','${p.id}','pontuacao',this.value)"></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteParticipante('${tarefaId}','${p.id}')">🗑️</button></td>
+        </tr>
+      `;
+    });
+    html += `
+          <tr>
+            <td colspan="2" style="text-align:right;font-weight:700;">Total:</td>
+            <td style="font-weight:700;color:${overLimit ? 'var(--danger)' : 'var(--success)'};">${soma} / ${max}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  // Formulário adicionar participante
+  html += `
+      <div class="divider"></div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Nome do Participante</label>
+          <input type="text" id="newPartName_${tarefaId}" placeholder="Nome do aluno..."
+            onkeydown="if(event.key==='Enter')document.getElementById('newPartScore_${tarefaId}').focus()">
+        </div>
+        <div class="form-group" style="flex:0;min-width:120px;">
+          <label>Pontuação</label>
+          <input type="number" id="newPartScore_${tarefaId}" placeholder="0" min="0"
+            onkeydown="if(event.key==='Enter')addParticipante('${tarefaId}')">
+        </div>
+        <div class="form-group" style="flex:0;">
+          <button class="btn btn-success" onclick="addParticipante('${tarefaId}')">＋ Adicionar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
+/* ============================================================
+   EXPORTAÇÃO PDF
+   ============================================================ */
+function exportTarefaPDF(tarefaId) {
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  const tarefa = turma.tarefas[tarefaId];
+  const serieLabel = turma.serie === '4ano' ? '4° Ano' : '5° Ano';
+
+  const participantes = Object.entries(tarefa.participantes || {})
+    .map(([id, p]) => ({ id, ...p }))
+    .sort((a, b) => (b.pontuacao || 0) - (a.pontuacao || 0));
+
+  const soma = participantes.reduce((s, p) => s + (p.pontuacao || 0), 0);
+  const max = tarefa.pontuacao_maxima || 0;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Cabeçalho
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, 210, 35, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text('TABUANDO - Competicao Escolar', 14, 16);
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Turma: ${turma.nome}  |  ${serieLabel}`, 14, 25);
+  doc.text(`Tarefa: ${tarefa.nome}  |  Pontuacao Maxima: ${max} pontos`, 14, 31);
+
+  // Tabela de participantes
+  const rows = participantes.map((p, i) => [
+    i + 1,
+    p.nome,
+    `${p.pontuacao || 0} pontos`,
+    p.pontuacao === max && participantes.length === 1 ? 'Pleno' :
+      p.pontuacao === Math.max(...participantes.map(x => x.pontuacao || 0)) ? '1º Lugar' : '-'
+  ]);
+
+  rows.push(['', 'TOTAL', `${soma} / ${max} pontos`, '']);
+
+  doc.autoTable({
+    startY: 42,
+    head: [['#', 'Participante', 'Pontuacao', 'Classificacao']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [79, 70, 229], fontSize: 11 },
+    bodyStyles: { fontSize: 11 },
+    columnStyles: {
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 45, halign: 'center' },
+      3: { cellWidth: 50, halign: 'center' },
+    },
+    didParseCell: function(data) {
+      // Destacar linha de total
+      if (data.row.index === participantes.length) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [240, 240, 250];
+      }
+      // Destacar 1º lugar
+      if (data.row.index === 0 && data.section === 'body') {
+        data.cell.styles.textColor = [145, 64, 14];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  // Rodapé
+  const finalY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Relatorio gerado em ${new Date().toLocaleString('pt-BR')}`, 14, finalY);
+  doc.text('TABUANDO - Competicao de Tabuada', 14, finalY + 5);
+
+  doc.save(`TABUANDO_${turma.nome}_${tarefa.nome}.pdf`);
+  showToast('PDF gerado!', 'success');
+}
+
+function exportTurmaPDF() {
+  const turma = state.turmas.find(t => t.id === state.turmaAtual);
+  const serieLabel = turma.serie === '4ano' ? '4° Ano' : '5° Ano';
+  const tarefas = turma.tarefas || {};
+  const tarefaIds = Object.keys(tarefas);
+
+  if (tarefaIds.length === 0) {
+    showToast('Nenhuma tarefa para exportar', 'error');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Cabeçalho
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, 210, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text('TABUANDO - Competicao Escolar', 14, 14);
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Turma: ${turma.nome}  |  ${serieLabel}  |  ${tarefaIds.length} tarefa(s)`, 14, 23);
+
+  let y = 40;
+
+  tarefaIds.forEach((tarefaId, tIdx) => {
+    const tarefa = tarefas[tarefaId];
+    const participantes = Object.entries(tarefa.participantes || {})
+      .map(([id, p]) => ({ id, ...p }))
+      .sort((a, b) => (b.pontuacao || 0) - (a.pontuacao || 0));
+
+    const soma = participantes.reduce((s, p) => s + (p.pontuacao || 0), 0);
+    const max = tarefa.pontuacao_maxima || 0;
+
+    // Título da tarefa
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.text(`Tarefa: ${tarefa.nome}`, 14, y);
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Pontuacao Maxima: ${max} pontos  |  Total atribuido: ${soma} pontos`, 14, y + 5);
+    y += 10;
+
+    const rows = participantes.map((p, i) => [
+      i + 1,
+      p.nome,
+      `${p.pontuacao || 0} pontos`,
+    ]);
+    if (participantes.length > 0) {
+      rows.push(['', 'TOTAL', `${soma} / ${max} pontos`]);
+    }
+
+    doc.autoTable({
+      startY: y,
+      head: participantes.length > 0 ? [['#', 'Participante', 'Pontuacao']] : [],
+      body: participantes.length > 0 ? rows : [['', 'Nenhum participante cadastrado', '']],
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229], fontSize: 10 },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 110 },
+        2: { cellWidth: 40, halign: 'center' },
+      },
+      didParseCell: function(data) {
+        if (participantes.length > 0 && data.row.index === participantes.length) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [240, 240, 250];
+        }
+        if (data.row.index === 0 && participantes.length > 0 && data.section === 'body') {
+          data.cell.styles.textColor = [145, 64, 14];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    y = doc.lastAutoTable.finalY + 14;
+
+    // Divisor entre tarefas
+    if (tIdx < tarefaIds.length - 1) {
+      doc.setDrawColor(220, 220, 220);
+      doc.line(14, y - 7, 196, y - 7);
+    }
+  });
+
+  // Rodapé na última página
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`TABUANDO - ${turma.nome} (${serieLabel})  |  Pagina ${i}/${pageCount}  |  ${new Date().toLocaleDateString('pt-BR')}`, 14, 290);
+  }
+
+  doc.save(`TABUANDO_${turma.nome}_ResultadoCompleto.pdf`);
+  showToast('PDF da turma gerado!', 'success');
+}
+
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
+// Fecha modais ao clicar fora
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeTurmaModal();
+      closeTarefaModal();
+    }
+  });
+});
+
+// Inicializa
+loadTurmas();
+</script>
+
+</body>
+</html>
